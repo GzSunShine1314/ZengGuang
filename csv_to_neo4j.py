@@ -7,7 +7,7 @@ AUTH = ("neo4j", "neo4j_matrix")
 BATCH_SIZE = 100  # 批量提交大小（每100行数据提交一次，可根据数据量调整）
 
 def import_csv_to_neo4j():
-    file_path = "C:/Users/ZengGuang/Desktop/tables/mes_pd_adjust_chemical_log_silver.csv"
+    file_path = "C:/Users/ZengGuang/Desktop/tables/pd_production_log_silver_mes.xlsx.csv"
     batch_data = []  # 存储批量数据
     
     # 创建驱动（复用连接，减少连接开销）
@@ -21,13 +21,13 @@ def import_csv_to_neo4j():
                 print(f"CSV文件中的实际列名: {actual_columns}")
                 
                 # 检查必需的列是否存在（考虑可能的BOM字符）
-                required_columns = ['related_project', 'en_material_code', 'adjustment_quantity', 'created_at', 
-                                  'default_unit']
+                required_columns = ['sfc_no', 'processing_status', 'process_step', 'process_step_desc', 
+                                  'resource_code','resource_desc','weight','created_at','default_unit']
                 
                 # 创建列名映射，处理BOM字符
                 column_mapping = {}
                 for col in actual_columns:
-                    clean_col = col.replace('\ufeff', '')  # 移除BOM字符
+                    clean_col = col.replace('/ufeff', '')  # 移除BOM字符
                     column_mapping[clean_col] = col
                 
                 print(f"清理后的列名映射: {column_mapping}")
@@ -47,11 +47,15 @@ def import_csv_to_neo4j():
                     # 1. 收集单条数据（转为字典，对应Cypher参数）
                     # 使用映射后的列名获取数据
                     data = {
-                        "related_project": row.get(column_mapping['related_project'], ''),
-                        "en_material_code": row.get(column_mapping['en_material_code'], ''),
-                        "adjustment_quantity": row.get(column_mapping['adjustment_quantity'], ''),
+                        "sfc_no": row.get(column_mapping['sfc_no'], ''),
+                        "processing_status": row.get(column_mapping['processing_status'], ''),
+                        "process_step": row.get(column_mapping['process_step'], ''),
+                        "process_step_desc": row.get(column_mapping['process_step_desc'], ''),
+                        "resource_code": row.get(column_mapping['resource_code'], ''),
+                        "resource_desc": row.get(column_mapping['resource_desc'], ''),
+                        "weight": row.get(column_mapping['weight'], ''),
                         "created_at": row.get(column_mapping['created_at'], ''),
-                        "default_unit": row.get(column_mapping['default_unit'], '')
+                        "default_unit": row.get(column_mapping['default_unit'], ''),
                     }
                     
                     # 过滤掉空行或无效数据
@@ -64,10 +68,14 @@ def import_csv_to_neo4j():
                             # 批量CREATE：用UNWIND展开列表，一次插入多条数据
                             driver.execute_query("""
                                 UNWIND $batch_data AS item
-                                CREATE (mpacls:mes_pd_adjust_chemical_log_silver{
-                                    related_project: item.related_project,
-                                    en_material_code: item.en_material_code,
-                                    adjustment_quantity: item.adjustment_quantity,
+                                CREATE (mppls:mes_pd_production_log_silver{
+                                    sfc_no: item.sfc_no,
+                                    processing_status: item.processing_status,
+                                    process_step: item.process_step,
+                                    process_step_desc: item.process_step_desc,
+                                    resource_code: item.resource_code,
+                                    resource_desc: item.resource_desc,
+                                    weight: item.weight,
                                     created_at: item.created_at,
                                     default_unit: item.default_unit
                                 })
@@ -80,12 +88,16 @@ def import_csv_to_neo4j():
                 if batch_data:
                     driver.execute_query("""
                         UNWIND $batch_data AS item
-                        CREATE (mpacls:mes_pd_adjust_chemical_log_silver{
-                            related_project: item.related_project,
-                            en_material_code: item.en_material_code,
-                            adjustment_quantity: item.adjustment_quantity,
-                            created_at: item.created_at,
-                            default_unit: item.default_unit
+                        CREATE (mppls:mes_pd_production_log_silver{
+                                    sfc_no: item.sfc_no,
+                                    processing_status: item.processing_status,
+                                    process_step: item.process_step,
+                                    process_step_desc: item.process_step_desc,
+                                    resource_code: item.resource_code,
+                                    resource_desc: item.resource_desc,
+                                    weight: item.weight,
+                                    created_at: item.created_at,
+                                    default_unit: item.default_unit
                         })
                     """, batch_data=batch_data)
                     print(f"最终导入：共 {row_count} 行数据")
