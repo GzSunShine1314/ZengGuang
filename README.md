@@ -181,3 +181,13 @@ ORDER BY sfc.sfc_code, created_at
 WITH sfc, HEAD(COLLECT({pl: pl, created_at: created_at})) as first_process
 WITH sfc, first_process.pl as first_pl
 MERGE (sfc)-[:开始工序 {process_step: first_pl.process_step, weight: first_pl.weight}]->(first_pl);
+
+// 为每个SFC找到最后一道工序并创建关系
+MATCH (sfc:SFC)
+MATCH (pl:mes_pd_production_log_silver {sfc_no: sfc.sfc_code, processing_status: "COMPLETE"})
+WITH sfc, pl, pl.created_at as created_at
+ORDER BY sfc.sfc_code, created_at DESC
+WITH sfc, COLLECT(pl)[0] as last_process
+WHERE NOT (last_process)-[:完成工序]->(sfc)
+MERGE (last_process)-[:完成工序]->(sfc)
+RETURN COUNT(*) as 创建的完成工序关系数;
